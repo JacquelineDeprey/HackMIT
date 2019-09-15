@@ -1,0 +1,156 @@
+---
+title: "HackMIT Education Analysis"
+author: "Jacqueline Deprey, Joshua Seides, Ethan Zou"
+date: "September 14, 2019"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rvest)
+library(tidyr)
+library(dplyr)
+library(tidyverse)
+library(purrr)
+```
+
+## Role of Money in the United States Education System
+
+For this project, our team wanted to learn more about data science and the mining and analysis process. Because we are working within the scope of the Education track at HackMIT this year, we decided to examine the role money plays in America's education system. This insights are important since analysis such as this could affect public policy decisions made by the government as well as how Americans view the current education system and therefore could change which candidate's educational policy they believe is best for improving our nation which could influence their vote in the upcoming election. 
+
+
+#Description of dataset
+
+"U.S. Education Datasets: Unification Project" is a dataset designed to bring together multiple facets of U.S. education data into one convenient CSV. There are 1492 entities, or objects that the dataset refers to. Each entity represents the educational system in a particular year in a certain state. There are 25 different attributes, including:
+
+| Attribute | Description | 
+|-----------|----------------------------------------------------------|
+| PRIMARY_KEY | A unique identifier for each piece of data |
+| STATE | The territory within the United States the data is from |
+| YEAR | The year the data is from | 
+| ENROLL | The U.S. Census Bureau's count for students in the state. Should be comparable to GRADES_ALL |
+| TOTAL_REVENUE | The total amount of money in dollars an individual state's education system gets in a particular year | 
+| FEDERAL_REVENUE | The amount of money in dollars an individual state's education system gets in a particular year from the federal government|
+| STATE_REVENUE | The amount of money in dollars an individual state's education system gets in a particular year from the state government|
+| LOCAL_REVENUE | The amount of money in dollars an individual state's education system gets in a particular year from the local governments that make up that state |
+| TOTAL_EXPENDITURE | The total amount of money in dollars an individual state's education system spends in a particular year |
+| INSTRUCTION_EXPENDITURE | The  amount of money in dollars an individual state's education system spends in a particular year on instruction (i.e. teachers and online resources that directly help students learn) |
+| SUPPORT_SERVICES_EXPENDITURE | The total amount of money in dollars an individual state's education system spends in a particular year on support services (i.e. materials that help teachers instruct students) |
+| OTHER_EXPENDITURE | The total amount of money in dollars an individual state's education system spends in a particular year on other expenses. |
+| CAPITAL_OUTLAY_EXPENDITURE | The total amount of money in dollars an individual state's education system spends in a particular year on fixed assets and/or extending the useful lives of the equipment the state alreaday has. |
+| GRADES_PK_G | The number of students in pre-school/early childhood development programs | 
+| GRADES_KG_G | The number of students in kindergarden | 
+| GRADES_4_G | The number of students in 4th grade | 
+| GRADES_8_G | The number of students in 8th grade | 
+| GRADES_12_G | The number of students in 12th grade | 
+| GRADES_1_8_G | The number of students in grades 1-8 inclusive | 
+| GRADES_9_12_G | The number of students in grades 9-12 inclusive | 
+| GRADES_ALL_G | The total number of students in all grades | 
+| AVG_MATH_4_SCORE | The average math score of a 4th grader | 
+| AVG_MATH_8_SCORE | The average math score of a 8th grader | 
+| AVG_READING_4_SCORE | The average reading score of a 4th grader |
+| AVG_READING_8_SCORE | The average reading score of a 8th grader | 
+
+	  
+The dataset was obtained as a CSV file from Kaggle.com. Kaggle is an online community of data scientists, owned by Google LLC. Users find and publish data sets, explore and build models in a data-science environment, work with other data scientists, and enter competitions to solve data science challenges. This specific dataset was uploaded 6 months ago by Roy Garrad. To load this CSV file into an R data frame, which we can then use for analysis, we must use read_csv method() to read in the data and use the as_data_frame() method to transform it into a data frame, as seen below.
+
+
+```{r, warning=FALSE}
+dat <- read.csv("C:/Users/jacq_/Documents/Programming/CMSC320/states_all.csv")
+as_data_frame(dat)
+
+```
+
+
+#Tidying the Dataset
+
+It is important that before we analyze our data, it is presented in such a manner that it is responsive to analysis, in both modeling and visualization. To do this, we have structured our data according to the Entity-Relationship model. This is a data structure where each attribute forms a column, each entity forms a row, and each type of entity forms a table. Once our data is presented as such, we modified some of the entities to make it easier to analyze. To do this, we dropped all of the "NAs" in the data frame, as they wouldn't be useful to our analysis.
+  
+  
+```{r, warning=FALSE}
+dat <- dat %>%
+  drop_na()
+
+
+head(as_data_frame(dat))
+```
+
+
+#General Data Visualization / Analysis
+
+
+Data Visualization is a very important aspect of data science. It allows us to gain understanding of dataset characteristics throughout our analysis, and helps us easily communicate discovered insights derived from said analysis. To start off our analysis, we decided to check to see the frequencies of the number of times each state appeared in our dataset. By visualizing this and taking it into acount early, we can begin to see is our data might potentially be skewed if some states have a lower frequency than others thereby giving each value more influence over that state's summary statistics. 
+
+
+```{r, warning=FALSE}
+dat %>%
+  ggplot(mapping=aes(x=STATE)) +
+    geom_bar() + theme(axis.text.x=element_text(angle=90, hjust=1))
+```
+
+
+As you can deduce from this graph, most states have about 6 years of data on them. Because the range of data points per state is only 3 (deducted from subtracting the 10 from D.C. from the several states that have only 7 datapoints). Because this difference does not appear to be too large, it should be fair to use summary statistics consistantly for all of our state-based analysis going forward. 
+
+First, we decided to collect summary statistics on our data. 
+
+```{r, warning=FALSE}
+
+summary(dat)
+
+```
+
+
+We then wanted to determine if there was a relationship between the amount of money that was allocated to education and the year. To do this we began plotting our data to see if a visual representation existed. 
+
+```{r, warning=FALSE}
+dat %>% ggplot(aes(x = YEAR, y = TOTAL_REVENUE)) + geom_point() + geom_smooth(method=lm)
+```
+
+Because they amount of money does seem to increase on average from a visual standpoint each year, we began to do a regression analysis t better determine what that relationship is. 
+
+
+```{r, warning=FALSE}
+linear_regression <- lm(YEAR ~ TOTAL_REVENUE, data = dat)
+
+linear_regression %>%
+  broom::tidy()
+
+log_regression_revenue <- lm(YEAR ~ log(TOTAL_REVENUE), data = dat)
+
+log_regression_revenue %>%
+  broom::tidy()
+
+log_regression_both <- lm(log(YEAR) ~ log(TOTAL_REVENUE), data = dat)
+
+log_regression_both %>%
+  broom::tidy()
+
+log_regression_year <- lm(log(YEAR) ~ TOTAL_REVENUE, data = dat)
+
+log_regression_year %>%
+  broom::tidy()
+
+```
+
+Our p values for each of the different regressions we tried were all less than our alpha value of 0.05 thereby showing our data is statistically significant. Because our p-value for the relationship of the log of revenue with respect to the log of the year was the smallest, we can conclude that this relatinship best describes this data. Therefore, we can reject our null hyothesis that there is no relationship between these variables in favor of alternative that a relationship does exist. More specifically, for each increase of 1 in the log of each year, we expect the log of the amount funding for education to increase by 0.0004307. 
+
+
+We then wanted to determine if there was a relationship between the amount of money that was spent on education per student and the state in which it was from. To do this we began plotting our data to see if a visual representation existed. 
+
+```{r, warning=FALSE}
+dat %>% ggplot(aes(x = STATE, y = TOTAL_REVENUE/ENROLL)) + geom_point() + theme(axis.text.x=element_text(angle=90, hjust=1)) 
+```
+
+
+
+# Conclusion
+
+Aside from the insights we found from our data, we were able to learn a lot more about Data Science by doing this project for HackMIT this year. Not only was our team able to learn a new programming language, R, but we also learned more about this growing field and whether or not we see ourselves exploring opportunities in it down the line. 
+
+This project showed us that the logic of R is very similar to that of other programming languages we have dealt with in the past but syntactically very different. We had many frustrations with understanding the syntax of the commands and the format variables needed to be passed in to methods to output our desired result. Although learning R was fun and built our skills as data scientists since R is very prevalent in the field, we believe that we could have achieved the same results in Python in a fraction of the time that it took us to complete this project. 
+
+From a data science perspective, this project taught us the importance of tidying your data to unbias your results. Null values must be handled appropriately so that meaningful analysis can be produced. When we started hacking, we decided to include all the values from the data-set we pulled which led to the U.S. territories to be included in our analysis. However, these territories had inconsistent representations when compared to the other 50 states + District of Columbia which skewed the summary statistics and regression models we fitted for the data. By removing them, we were able to get higher r values in our regression models showing that the result was a better match. This project also showed us that visualization of data is a great tool to be able to make a preliminary estimate based on your eye is a relationship might occur. If there does appear to be a trend visually, a full analysis can be conducted to examine more closely if it is statistically significant or not. 
+
+Ultimately, we want to thank the organizers of HackMIT to allow our group to come together and learn new skills together and allow us to examine something that has affected each of us individually: the U.S. Education system. Because all members of our team are from different states  (Jacqueline from Maryland, Joshua from Georgia, and Ethan from Massachusetts) we were able to learn more about how funding works for our own school systems but the role it also plays into general statistics as a whole. Through our participation in the education track here we were able to not only learn more ourselves, but also produce some meaningful analysis on the education system as a whole!
